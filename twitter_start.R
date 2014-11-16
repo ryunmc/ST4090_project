@@ -1,6 +1,6 @@
-library(devtools)
+library(devtools) #loading all the required libraries and functions 
 library(twitteR)
-library(plyr) #loading all the required libraries and functions 
+library(plyr) 
 library(stringr)
 library(gdata)
 source("C:\\Users\\Ryanm\\Documents\\score_sentimentfn.R")
@@ -90,7 +90,7 @@ classify.apple.tweets <- function(string,start,end,num_tweets)
 	return(sentiment)
 }
 
-load.apple.data<-function(start,end) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPREADSHEETS WHICH MAY BE MISSING REQUIRED DATES (FIX SEARCH ALGORITHM)
+load.apple.data<-function(start,end,consec.days) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPREADSHEETS WHICH MAY BE MISSING REQUIRED DATES (FIX SEARCH ALGORITHM)
 {
 	start<-toString(start) #R doesn't initially recognise these in the correct format
 	end<-toString(end)
@@ -104,6 +104,9 @@ load.apple.data<-function(start,end) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPRE
 	day_count<-1 #this will be used to keep track of the entries successfully extracted from the dataframe 
 	value_array<-NULL #we will fill this with the market share extracted from the spreadsheet 
 	day.average<-NULL
+	num_day_groups<-num.days+1-consec.days #this is the number of clustered day groups that we will get 
+	avg.high.vec<-NULL #this will store the average of the highs over the cluster of days
+	avg.low.vec<-NULL
 		
 	for (i in n_rows:1) #note that the excel spreadsheet has dates in reverse order 
 	{
@@ -111,14 +114,25 @@ load.apple.data<-function(start,end) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPRE
 		
 		if( toString(entry) == days[day_count] ) #this means we have found the correct row of the dataframe. Note this array (days) is sorted chronologically 
 		{
-			row <- apple.dataframe[i,] #the comma acts like a wildcard and tells you to isolate just that row
+			average.high<-0 #this stores the average of the highs and lows 
+			average.low<-0
 			
-			day.high<- row[3] #perhaps take the average of the high and the low? FIX THIS PART!!
-			day.low<- row[4]			
-			day.average[day_count] = (day.high + day.low)/2
-			print( day.average[day_count] )
-
-			if(day_count == num.days) #this means we have successfully extracted the dates 
+			for(j in 1:consec.days) #within this loop we have the averaging process 
+			{
+				row <- apple.dataframe[(i-j+1),] #the comma acts like a wildcard and tells you to isolate just that row
+				day.high<- row[[3]] #note double brackets are required
+				day.low<- row[[4]]	
+				
+				average.high<-average.high+day.high
+				average.low<-average.low+day.low	
+			}
+			
+			average.high<-average.high / consec.days
+			average.low<-average.low / consec.days	
+			avg.high.vec[day_count]<-average.high
+			avg.low.vec[day_count]<-average.low
+			
+			if(day_count == num.days+1-consec.days) #note that with the clustering technique we wont go over all days 
 			{	
 				break
 			}	
@@ -126,13 +140,14 @@ load.apple.data<-function(start,end) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPRE
 		}		
 	}
 	
-	if(day_count != num.days) #this means we have an error
+	if(day_count != num.days+1-consec.days) #this means we have an error
 	{	
 			return("day missing from spreadsheet")
 	}
 	else
 	{
-		return(day.average)
+		high.low.combined<-c(avg.high.vec,avg.low.vec) #when we use this vector later we will have to split it in two to recover values 
+		return(high.low.combined)
 	}
 }
 
@@ -142,8 +157,12 @@ get.apple.sentiment<-function(string,start,end,consec.days,num_tweets,filename) 
 	end<-toString(end)													#e.g. if consec.days is 3 we takes tweets in groups of 3 days
 	days<-seq(from=as.Date(start),to=as.Date(end),by='days' ) #gives all of the days between the start and end
 	num.days<-length(days)
-	prices<-load.apple.data(start,end)
-		
+	
+	prices<-load.apple.data(start,end,consec.days) #recall that this vector contains the average highs and lows concatenated
+	len<-length(prices)
+	avg.high.vec<-prices[1: (len/2)]
+	avg.low.vec<-prices[(len/2 + 1):len]
+	
 	day.string <- NULL #day.string will form a column in the data frame
 	positive.vector<-NULL
 	neutral.vector<-NULL
@@ -167,7 +186,7 @@ get.apple.sentiment<-function(string,start,end,consec.days,num_tweets,filename) 
 	search.string<-replicate(num.days+1-consec.days,string)
 	num.tweets<-replicate(num.days+1-consec.days,num_tweets)
 	
-	apple.df <- data.frame(search.string,num.tweets,positive.vector,neutral.vector,negative.vector,prices) #note we have added prices here!!
+	apple.df <- data.frame(day.string,search.string,num.tweets,positive.vector,neutral.vector,negative.vector,avg.high.vec,avg.low.vec) #note we have added prices here!!
 	save(apple.df,file=filename)
 
 	return(apple.df)
