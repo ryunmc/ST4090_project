@@ -97,7 +97,7 @@ load.apple.data<-function(start,end,consec.days) #FIX THIS FUNCTION SO IT CAN DE
 	days<-seq(from=as.Date(start),to=as.Date(end),by='days' ) #gives all of the days between the start and end
 	num.days<-length(days)
 
-	apple.dataframe <- read.xls("C:\\Users\\Ryanm\\Documents\\table.xlsx",header=TRUE)
+	apple.dataframe <- read.csv(file="C:\\Users\\Ryanm\\Documents\\table.csv",header=TRUE) #NEED TO CHANGE TO CSV FILE!!
 	dimensions <- dim(apple.dataframe)
 	n_rows <- dimensions[1]
 	
@@ -142,7 +142,7 @@ load.apple.data<-function(start,end,consec.days) #FIX THIS FUNCTION SO IT CAN DE
 	
 	if(day_count != num.days+1-consec.days) #this means we have an error
 	{	
-			return("day missing from spreadsheet")
+ 		return("day missing from spreadsheet")
 	}
 	else
 	{
