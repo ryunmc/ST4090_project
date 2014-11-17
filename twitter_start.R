@@ -106,7 +106,7 @@ load.apple.data<-function(start,end,consec.days) #FIX THIS FUNCTION SO IT CAN DE
 	day.average<-NULL
 	num_day_groups<-num.days+1-consec.days #this is the number of clustered day groups that we will get 
 	avg.high.vec<-NULL #this will store the average of the highs over the cluster of days
-	avg.low.vec<-NULL
+	avg.low.vec<-NULL 
 		
 	for (i in n_rows:1) #note that the excel spreadsheet has dates in reverse order 
 	{
