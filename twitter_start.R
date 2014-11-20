@@ -4,7 +4,7 @@ library(plyr)
 library(stringr)
 library(gdata)
 source("C:\\Users\\Ryanm\\Documents\\score_sentimentfn.R")
-
+#Added message here testing Git
 api_key <- "Dxkeaeo90xqvJojTjv0thFk8q" #automates the authorisation process for using the Twitter API 
 api_secret <- "tCOOKiR2vW9Yw1fbShJfpebkWt3Cay8esHIeJ7K56GWzMdI85z"
 access_token <- "1483135261-nxXJfMeCYYQmuYbPRbrRZ9YPd833XY1ZFpNxAlA"
