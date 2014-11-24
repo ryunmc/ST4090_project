@@ -4,8 +4,9 @@ library(plyr)
 library(stringr)
 library(gdata)
 source("C:\\Users\\Ryanm\\Documents\\score_sentimentfn.R")
-#Added message here testing Git
-api_key <- "Dxkeaeo90xqvJojTjv0thFk8q" #automates the authorisation process for using the Twitter API 
+
+#automates the authorisation process for using the Twitter API 
+api_key <- "Dxkeaeo90xqvJojTjv0thFk8q" 
 api_secret <- "tCOOKiR2vW9Yw1fbShJfpebkWt3Cay8esHIeJ7K56GWzMdI85z"
 access_token <- "1483135261-nxXJfMeCYYQmuYbPRbrRZ9YPd833XY1ZFpNxAlA"
 access_token_secret <- "KcgiaiEAU8mU4OJFWUwIjNffGdpHfr681FbRylAIVqcYt"
@@ -74,121 +75,108 @@ overall.sentiment <- function(scores) #this takes the scores over a day/series o
 	return(results)
 }
  
-classify.apple.tweets <- function(string,start,end,num_tweets)
+classify.tweets <- function(string,start,end,num.tweets)
 {
 	start<-toString(start) #R doesn't initially recognise these in the correct format
 	end<-toString(end)
 
-	apple.tweets<-searchTwitter(string, since=start, until=end, n=num_tweets)
-	apple.tweets.text<-laply(apple.tweets, function(t) t$getText() ) #extracts just the text from the tweets  
-	apple.tweets.text<-clean.text(apple.tweets.text) #clean up the text #remove unicode etc
+	tweets<-searchTwitter(string, since=start, until=end, n=num.tweets)
+	tweets.text<-laply(tweets, function(t) t$getText() ) #extracts just the text from the tweets  
+	tweets.text<-clean.text(tweets.text) #clean up the text remove unicode etc
 
-	apple.scores<-score.sentiment(apple.tweets.text,pos.words,neg.words) #note that this includes the tweets themselves, remove this 
-	apple.scores<-apple.scores$score
+	scores<-score.sentiment(tweets.text,pos.words,neg.words) #note that this includes the tweets themselves, remove this 
+	scores<-scores$score
 	
-	sentiment<-overall.sentiment(apple.scores) #gives the vector with 3 entries (POS,NEU,NEG)
+	sentiment<-overall.sentiment(scores) #gives the vector with 3 entries (POS,NEU,NEG)
 	return(sentiment)
 }
 
-load.apple.data<-function(start,end,consec.days) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPREADSHEETS WHICH MAY BE MISSING REQUIRED DATES (FIX SEARCH ALGORITHM)
+load.market.data<-function(start,end) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPREADSHEETS WHICH MAY BE MISSING REQUIRED DATES (FIX SEARCH ALGORITHM)
 {
 	start<-toString(start) #R doesn't initially recognise these in the correct format
 	end<-toString(end)
 	days<-seq(from=as.Date(start),to=as.Date(end),by='days' ) #gives all of the days between the start and end
 	num.days<-length(days)
 
-	apple.dataframe <- read.csv(file="C:\\Users\\Ryanm\\Documents\\table.csv",header=TRUE) #NEED TO CHANGE TO CSV FILE!!
-	dimensions <- dim(apple.dataframe)
+	market.dataframe <- read.csv(file="C:\\Users\\Ryanm\\Documents\\table.csv",header=TRUE) #change this to have a general file handle
+	dimensions <- dim(market.dataframe)
 	n_rows <- dimensions[1]
 	
 	day_count<-1 #this will be used to keep track of the entries successfully extracted from the dataframe 
-	value_array<-NULL #we will fill this with the market share extracted from the spreadsheet 
-	day.average<-NULL
-	num_day_groups<-num.days+1-consec.days #this is the number of clustered day groups that we will get 
-	avg.high.vec<-NULL #this will store the average of the highs over the cluster of days
-	avg.low.vec<-NULL 
+	market.avg.vec<-NULL #this will be the y variable in our linear regression 
 		
 	for (i in n_rows:1) #note that the excel spreadsheet has dates in reverse order 
 	{
-		entry<-apple.dataframe[i,1] #this indexing just gives the date entry 
+		entry<-market.dataframe[i,1] #this indexing just gives the date entry 
 		
 		if( toString(entry) == days[day_count] ) #this means we have found the correct row of the dataframe. Note this array (days) is sorted chronologically 
 		{
-			average.high<-0 #this stores the average of the highs and lows 
-			average.low<-0
+			row<-market.dataframe[i,] #this gives the whole row from the dataframe 
+			day.high<- row[[3]] #note double brackets are required
+			day.low<- row[[4]]
+			day.average<- (day.high + day.low)/2 #get the average of the high and low
+			market.avg.vec[day_count] <- day.average 
 			
-			for(j in 1:consec.days) #within this loop we have the averaging process 
+			if(day_count==num.days) #this means we're finished
 			{
-				row <- apple.dataframe[(i-j+1),] #the comma acts like a wildcard and tells you to isolate just that row
-				day.high<- row[[3]] #note double brackets are required
-				day.low<- row[[4]]	
-				
-				average.high<-average.high+day.high
-				average.low<-average.low+day.low	
+				return(market.avg.vec)
 			}
-			
-			average.high<-average.high / consec.days
-			average.low<-average.low / consec.days	
-			avg.high.vec[day_count]<-average.high
-			avg.low.vec[day_count]<-average.low
-			
-			if(day_count == num.days+1-consec.days) #note that with the clustering technique we wont go over all days 
-			{	
-				break
-			}	
 			day_count<-day_count+1
-		}		
+		}	
 	}
-	
-	if(day_count != num.days+1-consec.days) #this means we have an error
-	{	
- 		return("day missing from spreadsheet")
-	}
-	else
+	if(day_count!=num.days) #this means we weren't able to get all the desired dates from the spreadsheet
 	{
-		high.low.combined<-c(avg.high.vec,avg.low.vec) #when we use this vector later we will have to split it in two to recover values 
-		return(high.low.combined)
+		print("Error: missing market days from spreadsheet")
+		return(0)
 	}
 }
-
-get.apple.sentiment<-function(string,start,end,consec.days,num_tweets,filename) #note the furthest that we can go back is present date - 6 days 
+	
+#when regressing market share against sentiment, we use (for a given market share day) the previous consec.days sentiment 
+get.apple.sentiment<-function(string,start,end,consec.days,num.tweets,filename) #load vector of all dates and pick the relevant ones 
 {
 	start<-toString(start) #R doesn't initially recognise these in the correct format
-	end<-toString(end)													#e.g. if consec.days is 3 we takes tweets in groups of 3 days
-	days<-seq(from=as.Date(start),to=as.Date(end),by='days' ) #gives all of the days between the start and end
+	end<-toString(end)											
+	days<-seq(from=as.Date(start),to=as.Date(end),by='days' ) 
 	num.days<-length(days)
+	market.start<-days[1+consec.days] 
+	market.end<-days[length(days)] #last element of vector 
+	num.market.days<- length(days)-consec.days #we iterate through the excel table here 
 	
-	prices<-load.apple.data(start,end,consec.days) #recall that this vector contains the average highs and lows concatenated
-	len<-length(prices)
-	avg.high.vec<-prices[1: (len/2)]
-	avg.low.vec<-prices[(len/2 + 1):len]
+	#loads all the required market data for the whole period 
+	avg.stock<-load.market.data(market.start,market.end) 
+	len<-length(avg.stock)
 	
-	day.string <- NULL #day.string will form a column in the data frame
+	#forming element of data frame 
+	tweet.dates <- NULL 
 	positive.vector<-NULL
 	neutral.vector<-NULL
 	negative.vector<-NULL
+	market.dates<-NULL
 
-	for(i in 1:(num.days+1-consec.days) ) #this is because we can only mine tweets from between two dates 
-	{					   #also, last cluster of dates is from (lastday+1-consec.days to lastday)
+	for(i in 1:num.market.days ) 
+	{
+		#making column of data frame 
 		day1<-days[i]
-		day2<-days[i + consec.days - 1] #i.e. between day1 and day2 we have consec.days consecutive days
+		day2<-days[i + consec.days - 1] #these are the predictor days 
+		entry<-paste(day1,'to',day2,sep=" ") 
+		tweet.dates <-c(tweet.dates,entry)
+		figure<-toString(days[i+consec.days])
+		market.dates<-c(market.dates,figure)
 		
-		entry<-paste(day1,'to ',day2,sep=" ") #this will be one form of entry in the data frame 
-		day.string <-c(day.string,entry)  
-
-		consec.days.score <- classify.apple.tweets(string,day1,day2,num_tweets)
-			
-		positive.vector<-c(positive.vector, consec.days.score[1]) #forming another column for the data frame 
-		neutral.vector<-c(neutral.vector, consec.days.score[2])   #note R uses 1-based indexing 
-		negative.vector<-c(negative.vector, consec.days.score[3])
+		#getting the tweet score used to "predict" market share 
+		consec.days.score <- classify.tweets(string,day1,day2,num.tweets)
+				
+		#classifying tweets 
+		positive.vector<-c(positive.vector, consec.days.score[1] ) 
+		neutral.vector<-c(neutral.vector, consec.days.score[2] )   
+		negative.vector<-c(negative.vector, consec.days.score[3] )
 	}
 
-	search.string<-replicate(num.days+1-consec.days,string)
-	num.tweets<-replicate(num.days+1-consec.days,num_tweets)
+	search.string<-replicate(num.market.days,string)
+	num.tweets<-replicate(num.market.days,num.tweets)
 	
-	apple.df <- data.frame(day.string,search.string,num.tweets,positive.vector,neutral.vector,negative.vector,avg.high.vec,avg.low.vec) #note we have added prices here!!
+	apple.df <- data.frame(search.string,tweet.dates,market.dates,num.tweets,positive.vector,neutral.vector,negative.vector,avg.stock) 
 	save(apple.df,file=filename)
-
 	return(apple.df)
 }
 
