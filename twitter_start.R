@@ -91,7 +91,7 @@ classify.tweets <- function(string,start,end,num.tweets)
 	return(sentiment)
 }
 
-load.market.data<-function(start,end) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPREADSHEETS WHICH MAY BE MISSING REQUIRED DATES (FIX SEARCH ALGORITHM)
+load.market.data<-function(start,end) #Would be nice to have checking of structure of the table included 
 {
 	start<-toString(start) #R doesn't initially recognise these in the correct format
 	end<-toString(end)
@@ -101,10 +101,10 @@ load.market.data<-function(start,end) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPR
 	market.dataframe <- read.csv(file="C:\\Users\\Ryanm\\Documents\\table.csv",header=TRUE) #change this to have a general file handle
 	dimensions <- dim(market.dataframe)
 	n_rows <- dimensions[1]
-	
 	day_count<-1 #this will be used to keep track of the entries successfully extracted from the dataframe 
-	market.avg.vec<-NULL #this will be the y variable in our linear regression 
-		
+	high.vec<-NULL #these will be the y variables in our linear regression 
+	low.vec<-NULL
+
 	for (i in n_rows:1) #note that the excel spreadsheet has dates in reverse order 
 	{
 		entry<-market.dataframe[i,1] #this indexing just gives the date entry 
@@ -112,14 +112,14 @@ load.market.data<-function(start,end) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPR
 		if( toString(entry) == days[day_count] ) #this means we have found the correct row of the dataframe. Note this array (days) is sorted chronologically 
 		{
 			row<-market.dataframe[i,] #this gives the whole row from the dataframe 
-			day.high<- row[[3]] #note double brackets are required
-			day.low<- row[[4]]
-			day.average<- (day.high + day.low)/2 #get the average of the high and low
-			market.avg.vec[day_count] <- day.average 
-			
+			high.vec<-c(high.vec,row[[3]] )
+			low.vec<-c(low.vec,row[[4]] )
+						
 			if(day_count==num.days) #this means we're finished
 			{
-				return(market.avg.vec)
+				market.vec<-c(high.vec,low.vec)
+				market.matrix = matrix( market.vec, nrow = num.days, ncol = 2)	
+				return(market.matrix)
 			}
 			day_count<-day_count+1
 		}	
@@ -143,8 +143,7 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vec
 	num.market.days<- length(days)-consec.days #we iterate through the excel table here 
 	
 	#loads all the required market data for the whole period 
-	avg.stock<-load.market.data(market.start,market.end) 
-	len<-length(avg.stock)
+	stock.matrix<-load.market.data(market.start,market.end) 
 	
 	#forming element of data frame 
 	tweet.dates <- NULL 
@@ -152,7 +151,9 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vec
 	neutral.vector<-NULL
 	negative.vector<-NULL
 	market.dates<-NULL
-
+	high.vec<-stock.matrix[,1]
+	low.vec<-stock.matrix[,2]
+	
 	for(i in 1:num.market.days ) 
 	{
 		#making column of data frame 
@@ -174,10 +175,12 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vec
 
 	search.string<-replicate(num.market.days,string)
 	num.tweets<-replicate(num.market.days,num.tweets)
-	apple.df <- data.frame(search.string,tweet.dates,market.dates,num.tweets,positive.vector,neutral.vector,negative.vector,avg.stock) 
+	apple.df <- data.frame(search.string,tweet.dates,market.dates,num.tweets,positive.vector,neutral.vector,negative.vector,high.vec,low.vec) 
 	write.table(apple.df,'results.csv', sep = ",", append = TRUE, row.names = FALSE, col.names = FALSE)
 	return(apple.df)
 }
+
+sentiment.regression<-function()
 
 #get latest apple data from this link http://finance.yahoo.com/q/hp?s=AAPL&a=10&b=02&c=2014&d=10&e=14&f=2014&g=d
 
