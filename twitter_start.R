@@ -132,7 +132,7 @@ load.market.data<-function(start,end) #FIX THIS FUNCTION SO IT CAN DEAL WITH SPR
 }
 	
 #when regressing market share against sentiment, we use (for a given market share day) the previous consec.days sentiment 
-get.apple.sentiment<-function(string,start,end,consec.days,num.tweets,filename) #load vector of all dates and pick the relevant ones 
+get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vector of all dates and pick the relevant ones 
 {
 	start<-toString(start) #R doesn't initially recognise these in the correct format
 	end<-toString(end)											
@@ -174,9 +174,8 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets,filename) 
 
 	search.string<-replicate(num.market.days,string)
 	num.tweets<-replicate(num.market.days,num.tweets)
-	
 	apple.df <- data.frame(search.string,tweet.dates,market.dates,num.tweets,positive.vector,neutral.vector,negative.vector,avg.stock) 
-	save(apple.df,file=filename)
+	write.table(apple.df,'results.csv', sep = ",", append = TRUE, row.names = FALSE, col.names = FALSE)
 	return(apple.df)
 }
 
