@@ -97,7 +97,7 @@ load.market.data<-function(start,end) #Would be nice to have checking of structu
 	end<-toString(end)
 	days<-seq(from=as.Date(start),to=as.Date(end),by='days' ) #gives all of the days between the start and end
 	num.days<-length(days)
-
+	
 	market.dataframe <- read.csv(file="C:\\Users\\Ryanm\\Documents\\table.csv",header=TRUE) #change this to have a general file handle
 	dimensions <- dim(market.dataframe)
 	n_rows <- dimensions[1]
@@ -180,7 +180,38 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vec
 	return(apple.df)
 }
 
-sentiment.regression<-function()
+sentiment.regression<-function(market.date.start,market.date.end) #this performs a linear regression taking the desired market value entries from the dataframe
+{
+	market.date.start<-toString(market.date.start) #R doesn't initially recognise these in the correct format
+	market.date.end<-toString(market.date.end)
+	results.dataframe <- read.csv(file="C:\\Users\\Ryanm\\Documents\\results.csv",header=TRUE) #change this to have a general file handle
+	dimensions <- dim(results.dataframe)
+	n_rows <- dimensions[1]
+	
+	for (i in n_rows:1) #note that the excel spreadsheet has dates in reverse order 
+	{
+		entry<-results.dataframe[i,3] #this indexing just gives the date entry 
+		
+		if( toString(entry) == market.date.start ) #this means we have found the correct row of the dataframe. Note this array (days) is sorted chronologically 
+		{
+			start.index <- i
+		}
+		
+		if( toString(entry) == market.date.start )
+		{
+			end.index <- i
+		}
+	}
+	
+	positive.vec<-results.dataframe[end.index:start.index,5] #these are the independent variables in the regression
+	neutral.vec<-results.dataframe[end.index:start.index,6]
+	negative.vec<-results.dataframe[end.index:start.index,7]
+	market.share.vec<-results.dataframe[end.index:start.index,8] #currently this is using market HIGH
+		
+	lm(market.share.vec ~ positive.vec + neutral.vec + negative.vec)
+}
+
+
 
 #get latest apple data from this link http://finance.yahoo.com/q/hp?s=AAPL&a=10&b=02&c=2014&d=10&e=14&f=2014&g=d
 
