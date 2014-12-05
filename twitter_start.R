@@ -197,18 +197,18 @@ sentiment.regression<-function(market.date.start,market.date.end) #this performs
 			start.index <- i
 		}
 		
-		if( toString(entry) == market.date.start )
+		if( toString(entry) == market.date.end )
 		{
 			end.index <- i
 		}
 	}
 	
-	positive.vec<-results.dataframe[end.index:start.index,5] #these are the independent variables in the regression
-	neutral.vec<-results.dataframe[end.index:start.index,6]
-	negative.vec<-results.dataframe[end.index:start.index,7]
-	market.share.vec<-results.dataframe[end.index:start.index,8] #currently this is using market HIGH
+	positive.vec<-results.dataframe[start.index:end.index,5] #these are the independent variables in the regression
+	neutral.vec<-results.dataframe[start.index:end.index,6]
+	negative.vec<-results.dataframe[start.index:end.index,7]
+	market.share.vec<-results.dataframe[start.index:end.index,8] #currently this is using market HIGH
 		
-	lm(market.share.vec ~ positive.vec + neutral.vec + negative.vec)
+	lm(market.share.vec ~ positive.vec + negative.vec) #variables need to be linearly independe so drop one of the sentiment vectors
 }
 
 
