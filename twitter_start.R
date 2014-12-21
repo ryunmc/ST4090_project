@@ -3,6 +3,7 @@ library(twitteR)
 library(plyr) 
 library(stringr)
 library(gdata)
+library(quantmod)
 source("C:\\Users\\Ryanm\\Documents\\score_sentimentfn.R")
 
 #automates the authorisation process for using the Twitter API 
@@ -130,20 +131,48 @@ load.market.data<-function(start,end) #Would be nice to have checking of structu
 		return(0)
 	}
 }
+
+get.yahoo.data<-function(company.string,start,end) #for apple, company.string is "AAPL"
+{
+	start<-toString(start) #R doesn't initially recognise these in the correct format
+	end<-toString(end)
+	days<-seq(from=as.Date(start),to=as.Date(end),by='days' ) #gives all of the days between the start and end
+	num.days<-length(days)
+	high.vec<-NULL #these will be the y variables in our linear regression 
+	low.vec<-NULL
+	
+	if(company.string == "AAPL")
+	{
+		getSymbols("AAPL", src="yahoo", from=start, to=end)
+		aapl.df<-as.data.frame(AAPL)
+		df.dates<-rownames(aapl.df)
+		size<-dim(aapl.df)
+		nrows<-size[1]
+		day_count<-1 #this will be used to keep track of the entries successfully extracted from the dataframe 
+		
+		for (i in 1:nrows) #note that the excel spreadsheet has dates in reverse order 
+		{
+			entry<-df.dates[i] #this indexing just gives the date entry 
+			row<-aapl.df[i,] #this gives the whole row from the dataframe 
+			high.vec<-c(high.vec,row[[2]] )
+			low.vec<-c(low.vec,row[[3]] )				
+			day_count<-day_count+1
+				
+		}
+		market.vec<-c(df.dates,high.vec,low.vec)
+		market.matrix = matrix( market.vec, ncol = 3)	
+		return(market.matrix)
+	}
+}
 	
 #when regressing market share against sentiment, we use (for a given market share day) the previous consec.days sentiment 
 get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vector of all dates and pick the relevant ones 
 {
 	start<-toString(start) #R doesn't initially recognise these in the correct format
 	end<-toString(end)											
-	days<-seq(from=as.Date(start),to=as.Date(end),by='days' ) 
-	num.days<-length(days)
-	market.start<-days[1+consec.days] 
-	market.end<-days[length(days)] #last element of vector 
-	num.market.days<- length(days)-consec.days #we iterate through the excel table here 
 	
 	#loads all the required market data for the whole period 
-	stock.matrix<-load.market.data(market.start,market.end) 
+	aapl.df<-get.yahoo.data("AAPL",start,end)
 	
 	#forming element of data frame 
 	tweet.dates <- NULL 
@@ -151,20 +180,24 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vec
 	neutral.vector<-NULL
 	negative.vector<-NULL
 	market.dates<-NULL
-	high.vec<-stock.matrix[,1]
-	low.vec<-stock.matrix[,2]
+	high.vec<-NULL
+	low.vec<-NULL
+	dates.vec<-aapl.df[,1]
+	num.market.days<-length(dates.vec)
 	
-	for(i in 1:num.market.days ) 
+	for(i in 1:(num.market.days-consec.days) ) 
 	{
 		#making column of data frame 
-		day1<-days[i]
-		day2<-days[i + consec.days - 1] #these are the predictor days 
+		day1<-dates.vec[i]
+		day2<-dates.vec[i + consec.days - 1] #these are the predictor days 
 		entry<-paste(day1,'to',day2,sep=" ") 
 		tweet.dates <-c(tweet.dates,entry)
-		figure<-toString(days[i+consec.days])
+		figure<-toString(dates.vec[i+consec.days]) #initially had toString wrapped around here 
 		market.dates<-c(market.dates,figure)
+		high.vec<-c(high.vec, aapl.df[i+consec.days,2] )
+		low.vec<-c(low.vec, aapl.df[i+consec.days,3] )
 		
-		#getting the tweet score used to "predict" market share 
+		#getting the tweet score used to "predict" market share
 		consec.days.score <- classify.tweets(string,day1,day2,num.tweets)
 				
 		#classifying tweets 
@@ -172,9 +205,10 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vec
 		neutral.vector<-c(neutral.vector, consec.days.score[2] )   
 		negative.vector<-c(negative.vector, consec.days.score[3] )
 	}
-
-	search.string<-replicate(num.market.days,string)
-	num.tweets<-replicate(num.market.days,num.tweets)
+	
+	search.string<-replicate(num.market.days-consec.days,string)
+	num.tweets<-replicate(num.market.days-consec.days,num.tweets)
+	
 	apple.df <- data.frame(search.string,tweet.dates,market.dates,num.tweets,positive.vector,neutral.vector,negative.vector,high.vec,low.vec) 
 	write.table(apple.df,'results.csv', sep = ",", append = TRUE, row.names = FALSE, col.names = FALSE)
 	return(apple.df)
@@ -208,10 +242,8 @@ sentiment.regression<-function(market.date.start,market.date.end) #this performs
 	negative.vec<-results.dataframe[start.index:end.index,7]
 	market.share.vec<-results.dataframe[start.index:end.index,8] #currently this is using market HIGH
 		
-	lm(market.share.vec ~ positive.vec + negative.vec) #variables need to be linearly independe so drop one of the sentiment vectors
+	lm(market.share.vec ~ positive.vec + negative.vec) #variables need to be linearly independent so drop one of the sentiment vectors
 }
-
-
 
 #get latest apple data from this link http://finance.yahoo.com/q/hp?s=AAPL&a=10&b=02&c=2014&d=10&e=14&f=2014&g=d
 
