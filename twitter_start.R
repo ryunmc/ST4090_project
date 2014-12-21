@@ -92,46 +92,6 @@ classify.tweets <- function(string,start,end,num.tweets)
 	return(sentiment)
 }
 
-load.market.data<-function(start,end) #Would be nice to have checking of structure of the table included 
-{
-	start<-toString(start) #R doesn't initially recognise these in the correct format
-	end<-toString(end)
-	days<-seq(from=as.Date(start),to=as.Date(end),by='days' ) #gives all of the days between the start and end
-	num.days<-length(days)
-	
-	market.dataframe <- read.csv(file="C:\\Users\\Ryanm\\Documents\\table.csv",header=TRUE) #change this to have a general file handle
-	dimensions <- dim(market.dataframe)
-	n_rows <- dimensions[1]
-	day_count<-1 #this will be used to keep track of the entries successfully extracted from the dataframe 
-	high.vec<-NULL #these will be the y variables in our linear regression 
-	low.vec<-NULL
-
-	for (i in n_rows:1) #note that the excel spreadsheet has dates in reverse order 
-	{
-		entry<-market.dataframe[i,1] #this indexing just gives the date entry 
-		
-		if( toString(entry) == days[day_count] ) #this means we have found the correct row of the dataframe. Note this array (days) is sorted chronologically 
-		{
-			row<-market.dataframe[i,] #this gives the whole row from the dataframe 
-			high.vec<-c(high.vec,row[[3]] )
-			low.vec<-c(low.vec,row[[4]] )
-						
-			if(day_count==num.days) #this means we're finished
-			{
-				market.vec<-c(high.vec,low.vec)
-				market.matrix = matrix( market.vec, nrow = num.days, ncol = 2)	
-				return(market.matrix)
-			}
-			day_count<-day_count+1
-		}	
-	}
-	if(day_count!=num.days) #this means we weren't able to get all the desired dates from the spreadsheet
-	{
-		print("Error: missing market days from spreadsheet")
-		return(0)
-	}
-}
-
 get.yahoo.data<-function(company.string,start,end) #for apple, company.string is "AAPL"
 {
 	start<-toString(start) #R doesn't initially recognise these in the correct format
@@ -156,8 +116,26 @@ get.yahoo.data<-function(company.string,start,end) #for apple, company.string is
 			row<-aapl.df[i,] #this gives the whole row from the dataframe 
 			high.vec<-c(high.vec,row[[2]] )
 			low.vec<-c(low.vec,row[[3]] )				
-			day_count<-day_count+1
-				
+		}
+		market.vec<-c(df.dates,high.vec,low.vec)
+		market.matrix = matrix( market.vec, ncol = 3)	
+		return(market.matrix)
+	}
+	if(company.string == "GOOG")
+	{
+		getSymbols("GOOG", src="yahoo", from=start, to=end)
+		goog.df<-as.data.frame(GOOG)
+		df.dates<-rownames(goog.df)
+		size<-dim(goog.df)
+		nrows<-size[1]
+		day_count<-1 #this will be used to keep track of the entries successfully extracted from the dataframe 
+		
+		for (i in 1:nrows) #note that the excel spreadsheet has dates in reverse order 
+		{
+			entry<-df.dates[i] #this indexing just gives the date entry 
+			row<-goog.df[i,] #this gives the whole row from the dataframe 
+			high.vec<-c(high.vec,row[[2]] )
+			low.vec<-c(low.vec,row[[3]] )				
 		}
 		market.vec<-c(df.dates,high.vec,low.vec)
 		market.matrix = matrix( market.vec, ncol = 3)	
@@ -166,13 +144,13 @@ get.yahoo.data<-function(company.string,start,end) #for apple, company.string is
 }
 	
 #when regressing market share against sentiment, we use (for a given market share day) the previous consec.days sentiment 
-get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vector of all dates and pick the relevant ones 
+get.apple.sentiment<-function(market_string,string,start,end,consec.days,num.tweets) #load vector of all dates and pick the relevant ones 
 {
 	start<-toString(start) #R doesn't initially recognise these in the correct format
 	end<-toString(end)											
 	
 	#loads all the required market data for the whole period 
-	aapl.df<-get.yahoo.data("AAPL",start,end)
+	phone.df<-get.yahoo.data(market_string,start,end)
 	
 	#forming element of data frame 
 	tweet.dates <- NULL 
@@ -182,7 +160,7 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vec
 	market.dates<-NULL
 	high.vec<-NULL
 	low.vec<-NULL
-	dates.vec<-aapl.df[,1]
+	dates.vec<-phone.df[,1]
 	num.market.days<-length(dates.vec)
 	
 	for(i in 1:(num.market.days-consec.days) ) 
@@ -194,8 +172,8 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vec
 		tweet.dates <-c(tweet.dates,entry)
 		figure<-toString(dates.vec[i+consec.days]) #initially had toString wrapped around here 
 		market.dates<-c(market.dates,figure)
-		high.vec<-c(high.vec, aapl.df[i+consec.days,2] )
-		low.vec<-c(low.vec, aapl.df[i+consec.days,3] )
+		high.vec<-c(high.vec, phone.df[i+consec.days,2] )
+		low.vec<-c(low.vec, phone.df[i+consec.days,3] )
 		
 		#getting the tweet score used to "predict" market share
 		consec.days.score <- classify.tweets(string,day1,day2,num.tweets)
@@ -209,9 +187,17 @@ get.apple.sentiment<-function(string,start,end,consec.days,num.tweets) #load vec
 	search.string<-replicate(num.market.days-consec.days,string)
 	num.tweets<-replicate(num.market.days-consec.days,num.tweets)
 	
-	apple.df <- data.frame(search.string,tweet.dates,market.dates,num.tweets,positive.vector,neutral.vector,negative.vector,high.vec,low.vec) 
-	write.table(apple.df,'results.csv', sep = ",", append = TRUE, row.names = FALSE, col.names = FALSE)
-	return(apple.df)
+	phone.df <- data.frame(search.string,tweet.dates,market.dates,num.tweets,positive.vector,neutral.vector,negative.vector,high.vec,low.vec)
+	if(market_string == "GOOG")
+	{
+		path<-"android_results.csv"
+	}	
+	if(market_string == "AAPL")
+	{
+		path<-"iphone_results.csv"
+	}
+	write.table(phone.df,path, sep = ",", append = TRUE, row.names = FALSE, col.names = FALSE)
+	return(phone.df)
 }
 
 sentiment.regression<-function(market.date.start,market.date.end) #this performs a linear regression taking the desired market value entries from the dataframe
