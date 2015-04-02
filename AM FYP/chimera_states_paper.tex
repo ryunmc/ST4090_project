@@ -1,0 +1,251 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{pifont}
+\usepackage{pdfpages}
+\usepackage{pgfplots}
+\usepackage{tikz}
+
+\newenvironment{definition}[1][Definition]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{dfn}{Definition}[section]
+\newtheorem{pf}{Proof}[section]
+\newtheorem{lm}{Lemma}[section]
+\begin{document}
+\title{Chimera States}
+\author{Ryan McCarthy}
+\date{} %makes the date blank
+\maketitle
+
+\section{Introduction}
+Dynamical systems can sometimes be in a state of synchronisation or chaos. A `chimera state" is when both chaos and order is present in a dynamical system.
+
+\section{The Model}
+
+\label{sec:The ODE}
+
+The model consists of a ring of $N$ phase oscillators or nodes. Coupling is introduced between particular oscillators, and the coupling distribution affects the resulting dynamics. The phase $\phi_i$ of the $i^{th}$ oscillator is governed by the following ODE:
+
+\begin{equation}
+\label{eq:ODE}
+\frac{\partial \phi_i}{\partial t} = \omega - \frac{1}{n_i} \sum\limits_{j\in{\mathcal{N}_i}}^{} G(i,j)\sin(\phi_i - \phi_j + \alpha), \hspace{5mm}i = 0\ldots N-1 
+\end{equation}
+\\
+$\mathcal{N}_i$ is a set consisting of nodes connected to node $i$, the cardinality of this set being $n_i$. $\mathcal{N}_i$ will be referred to as node $i's$ "neighbours". $\omega$ is set to zero (as suggested in \cite{bib:AbramsStrogatz}) and $0\leq\alpha \leq\frac{\pi}{2} $ is an angle. $G(i,j)$ is the strength of the coupling between nodes $i$ and $j$, the higher the magnitude, the higher the expected synchronicity and vice-versa.
+\\
+\\
+To avoid ambiguity in notation from herein $i$ refers to the imaginary unit and $m$ and $n$ to refer to the $m^{th}$ and $n^{th}$ oscillators. 
+
+\begin{dfn}[All-to-all coupling]
+If node $m$ is coupled to all other nodes in the network, then $G(m,n)=1, \hspace{5mm}n = 0\ldots N-1$
+\end{dfn}
+
+\begin{dfn}[Nearest $k$ neighbours]
+If node $m$ is coupled to its nearest $k$ neighbours, then:
+
+$$G(m,n) = \begin{cases} 
+      1 & |m-n|\leq k \\
+      0 & |m-n| > k 
+   \end{cases} $$
+\end{dfn}
+\noindent
+Let $\Omega$ denote the angular frequency of a rotating frame in which the dynamics simplify as much as possible, and let
+$$\theta = \phi - \Omega t$$
+denote the phase of an oscillator relative to this frame.
+\\
+\\
+A complex order parameter of the form $R_me^{i\Theta m}$ is introduced which measures how synchronised oscillator $m$ is with respect to its neighbours $\mathcal{N}_m$ (see \ref{eq:ODE}). Thus, the magnitude of the order parameter is $R_m$. The order parameter is defined as follows:
+
+\begin{equation}
+R(x)e^{i\Theta(x)} = \int_{-\pi}^{\pi}G(x-x')e^{i\theta(x')}dx'
+\end{equation}
+which in discrete form, becomes:
+
+\begin{equation}
+\label{eq:order_param}
+R_me^{i\Theta_m} = \frac{1}{n_m}\sum\limits_{n\in{\mathcal{N}_m}}^{} G(m,n) e^{i\theta_n}
+\end{equation}
+
+$R_m$ will evaluate to a number between $0$ and $1$, indicating no synchronisation and full synchronisation respectively. Note that throughout $\theta$ is equivalent to $\theta_m$. Next, a useful ODE for $\theta$ is derived.
+\\
+\\
+\textbf{Claim}
+\begin{equation}
+\label{eq:thing1}
+\frac{\partial \theta_m}{\partial t} = \omega - \Omega - R_m \sin[\theta_m - \Theta_m + \alpha]
+\end{equation}
+\\
+\\
+\textbf{Proof}
+
+$$\theta = \phi - \Omega t \implies \dot{\theta} = \dot{\phi} - \Omega$$
+\begin{equation}
+\label{eq:thing2}
+\dot{\theta} = \omega - \Omega - \frac{1}{n_m} \sum\limits_{n\in{\mathcal{N}_i}}^{} G(m,n)\sin[\phi_m - \phi_n + \alpha]
+\end{equation}
+comparing \ref{eq:thing2} to \ref{eq:thing1}, we see that what we are trying to show is equivalent to:
+$$R_m \sin[\theta_m - \Theta_m + \alpha] = \frac{1}{n_m} \sum\limits_{n\in{\mathcal{N}_i}}^{} G(m,n)\sin[\phi_m - \phi_n + \alpha]$$
+using the equation defining the order parameter:
+
+$$R_m e^{i(\Theta_m - \theta_m - \alpha)} = \frac{1}{n_m} \sum\limits_{n\in{\mathcal{N}_i}}^{} G(m,n) e^{i(\theta_n - \theta_m - \alpha)}  $$
+
+equate the imaginary part of both sides:
+
+$$R_m \sin[\Theta_m - \theta_m -\alpha] = \frac{1}{n_m} \sum\limits_{n\in{\mathcal{N}_i}}^{} G(m,n) \sin[\theta_n - \theta_m - \alpha]  $$
+
+
+$$\text{recall,} \; \theta = \phi - \Omega t $$
+$$\implies \theta_m - \theta_n = \phi_m - \phi_n$$
+$$ \text{hence} \; R_m \sin[\theta_m - \Theta_m + \alpha] = \frac{1}{n_m} \sum\limits_{n\in{\mathcal{N}_i}}^{} G(m,n)\sin[\phi_m - \phi_n + \alpha]$$
+
+this proves the required result.
+
+\begin{thm}[Self-consistency equation for oscillators]
+This is given by:
+
+$$R_m\exp[i\Theta_m] = e^{i\beta}\frac{1}{n_m} \sum\limits_{n\in{\mathcal{N}_m}}^{} G(m,n)\exp[i\Theta_n] \times \frac{\Delta + \sqrt{ \Delta^2 - {R_n}^2}}{R_n}  $$
+where $\beta = \frac{\pi}{2}-\alpha$ and $\Delta = \omega - \Omega$
+
+\end{thm}
+
+\begin{pf}
+Recall for oscillator $m$:
+
+$$\frac{\partial \theta_m}{\partial t} = \omega - \Omega - R_m \sin[\theta_m - \Theta_m + \alpha]$$
+\noindent
+the resulting dynamics will depend on the magnitude of $R_m$ relative to $|\omega - \Omega|$. The first case is when $R_m \geq |\omega - \Omega|$, the second is when $R_m < |\omega - \Omega|$. Note $\frac{\partial \theta_m}{\partial t}$ and $\dot{\theta}$ will be used interchangeably.
+
+\textbf{Case one $R_m \geq |\omega - \Omega|$}
+
+\vspace{1 cm}
+\begin{figure}[H]
+\begin{tikzpicture}{}
+\begin{axis}[
+    axis x line=middle,
+    axis y line=middle,
+    axis on top,
+    tick label style={font=\tiny},
+    smooth,
+    xlabel=$\theta$,
+    ylabel=$\dot{\theta}$,
+    xmin=0, xmax=500,
+    ymin=-5, ymax=5,
+    width=0.6\textwidth,
+    height=0.6\textwidth,
+    legend style={at={(0.02,0.97)},anchor=north west},
+]
+\addplot[draw=blue,domain=0:350]{2-3*sin(x)};
+\end{axis}
+\end{tikzpicture}
+\end{figure}
+it can be seen that there are two equilibria in figure. Let $\theta^1$ denote the stable root and $\theta^2$ denote the unstable root. In this case $\dot{\theta}$ will have a root where
+
+$$ \frac{\omega - \Omega}{R(x)} = \sin[\theta(x) - \Theta(x) + \alpha] $$
+
+using the identity $\sin^2(A) + \cos^2(A) = 1$ yields:
+
+$$\cos^2[\theta(x) - \Theta(x) + \alpha] = 1- \displaystyle(\frac{\omega - \Omega}{R(x)})^2 $$
+the right hand side can be rearranged to yield:
+
+$$\cos^2[\theta(x) - \Theta(x) + \alpha] =  \frac{R(x)^2-(\omega-\Omega)^2}{R(x)^2}$$
+
+this yields:
+
+$$\cos[\theta(x) - \Theta(x) + \alpha] =  \pm \sqrt{\frac{R(x)^2-(\omega-\Omega)^2}{R(x)^2}} $$
+
+to ascertain which root corresponds to $\theta^1$ and which corresponds to $\theta^2$, let
+
+$$f(\theta) := \omega - \Omega - R_m \sin[\theta - \Theta + \alpha]$$.
+
+Recall our stable equilibrium must satisfy:
+
+$$ \frac{df}{d\theta}\restriction_{\theta = \theta^1} < 0$$
+
+however,
+
+$$ \frac{df}{d\theta_m} = -R_m\cos[\theta(x) - \Theta(x) + \alpha] $$
+
+which tells us the stable root $\theta_s$ must satisfy:
+
+$$\cos[\theta(x) - \Theta(x) + \alpha] =  \sqrt{\frac{R(x)^2-(\omega-\Omega)^2}{R(x)^2}} $$
+
+hence:
+
+$$e^{i(\theta(x)-\Theta(x) +\alpha)} = \cos[\theta(x)-\Theta(x) +\alpha] + i\sin[\theta(x)-\Theta(x) +\alpha]$$
+
+$$=\frac{\sqrt{R(x)^2-\Delta^2} + i\Delta}{R(x)} $$
+$$=i \frac{\sqrt{\Delta^2-R(x)^2}+\Delta}{R(x)}$$
+
+recall the definition of the order parameter: 
+
+$$R_me^{i\Theta_m} = \frac{1}{n_m}\sum\limits_{n\in{\mathcal{N}_m}}^{} G(m,n) e^{i\theta_n}$$
+however:
+
+$$e^{i\theta_n} = e^{i(\theta_n - \Theta_n + \alpha)}e^{-i\alpha}e^{i\Theta_n}$$
+
+filling in to the above yields:
+
+$$R_m e^{i \Theta_m} = ie^{-i\alpha}\sum G(m,n)e^{i\Theta_n} \times \frac{\sqrt{\Delta^2-R(x)^2}+\Delta}{R(x)} $$
+
+Now let $\beta = \frac{\pi}{2} - \alpha$, this is equivalent to:
+
+$$R_m e^{i \Theta_m} = ie^{-i\alpha}\sum_{n \in \mathcal{N}_m} G(m,n)e^{i\Theta_n} \times \frac{\sqrt{\Delta^2-R(x)^2}+\Delta}{R(x)} $$
+
+\textbf{Case two $R_m < |\omega - \Omega|$}
+
+
+\begin{tikzpicture}
+\begin{axis}[
+    axis x line=middle,
+    axis y line=middle,
+    axis on top,
+    tick label style={font=\tiny},
+    smooth,
+    xlabel=$\theta$,
+    ylabel=$\dot{\theta}$,
+    xmin=0, xmax=350,
+    ymin=-5, ymax=5,
+    width=0.6\textwidth,
+    height=0.6\textwidth,
+    legend style={at={(0.02,0.97)},anchor=north west},
+]
+\addplot[draw=blue,domain=0:500]{3-2*sin(x)};
+\end{axis}
+\end{tikzpicture}
+
+In this case we see that there are no stationary solutions of $\dot{\theta}$. However, can perform some analysis. Let $p(\theta(x))$ denote the probability that 
+
+\section{Self-consistency equation for $k$ nearest neighbours and fully connected cases}
+
+\textbf{Fully connected nodes} \; Let $N$ denote the number of nodes in the network and suppose node $m$ is fully connected. We then have:
+
+\begin{equation}
+R_me^{i\Theta_m} = \frac{1}{N}\sum\limits_{n=1}^{N} e^{i\theta_n}
+\end{equation}
+
+as before:
+
+$$e^{i(\theta_n-\Theta_n +\alpha)} = i \frac{\sqrt{\Delta^2-R_n^2}+\Delta}{R_n}$$
+using $e^{i\theta_n}= e^{i(\theta_n-\Theta_n+\alpha)e^{-i\alpha}}e^{i\Theta_n}$ yields:
+
+$$R_me^{i\Theta_m} = e^{i\beta} \frac{1}{N}\sum\limits_{n=1}^{N} e^{i\Theta_n}\times \frac{\sqrt{\Delta^2-R_n^2}+\Delta}{R_n}$$
+
+Note that $\Theta$ comes from the value of the order parameter, and $\theta$ is the relative phase of an oscillator
+
+\textbf{Nearest k neighbours} \; Under the nearest k neighbours coupling, the order parameter fulfills:
+
+\begin{equation}
+R(x)e^{i\Theta(x)} = \int_{x-k}^{x+k}e^{i\theta(x')}dx'
+\end{equation}
+
+\end{pf}
+
+
+
+\end{document}
